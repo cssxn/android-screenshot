@@ -1,6 +1,7 @@
 package screen.com.myapplication;
 
 import android.Manifest;
+import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.ServiceConnection;
@@ -17,7 +18,7 @@ import android.view.View;
 import android.widget.Button;
 
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends Activity {
 
     private static final int RECORD_REQUEST_CODE  = 101;
     private static final int STORAGE_REQUEST_CODE = 102;
@@ -39,18 +40,18 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
 
-        startBtn = findViewById(R.id.button_start);
-        startBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View argView) {
-                if(recordService.isRunning()){
-                    recordService.stopRecord();
-                }else{
-                    Intent captureIntent = projectionManager.createScreenCaptureIntent();
-                    startActivityForResult(captureIntent,RECORD_REQUEST_CODE);
-                }
-            }
-        });
+//        startBtn = findViewById(R.id.button_start);
+//        startBtn.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View argView) {
+//                if(recordService.isRunning()){
+//                    recordService.stopRecord();
+//                }else{
+//                    Intent captureIntent = projectionManager.createScreenCaptureIntent();
+//                    startActivityForResult(captureIntent,RECORD_REQUEST_CODE);
+//                }
+//            }
+//        });
 
         // 动态申请写入权限
         if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
