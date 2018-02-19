@@ -190,6 +190,7 @@ public class RecordService extends Service {
 
     public void autoTakePhoto(){
 
+        Log.d(TAG,"======================");
 
         final Handler localHandler = new Handler();
         Runnable localRunnable = new Runnable() {

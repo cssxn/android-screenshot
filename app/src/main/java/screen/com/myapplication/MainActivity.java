@@ -2,18 +2,23 @@ package screen.com.myapplication;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AppOpsManager;
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
+import android.os.Build;
 import android.os.IBinder;
+import android.provider.Settings;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 
@@ -22,6 +27,7 @@ public class MainActivity extends Activity {
 
     private static final int RECORD_REQUEST_CODE  = 101;
     private static final int STORAGE_REQUEST_CODE = 102;
+    private static final int MY_PERMISSIONS_REQUEST_PACKAGE_USAGE_STATS = 1101;
 
 
     private MediaProjectionManager projectionManager;
@@ -30,7 +36,7 @@ public class MainActivity extends Activity {
     private Button startBtn;
 
 
-    final String TAG = "test";
+    final String TAG = "DaemonService";
 
 
     @Override
@@ -40,18 +46,13 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
 
 
-//        startBtn = findViewById(R.id.button_start);
-//        startBtn.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View argView) {
-//                if(recordService.isRunning()){
-//                    recordService.stopRecord();
-//                }else{
-//                    Intent captureIntent = projectionManager.createScreenCaptureIntent();
-//                    startActivityForResult(captureIntent,RECORD_REQUEST_CODE);
-//                }
-//            }
-//        });
+        // 申请查看当前app包名权限
+        if (!hasPermission()) {
+            //若用户未开启权限，则引导用户开启“Apps with usage access”权限
+            startActivityForResult(
+                    new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS),
+                    MY_PERMISSIONS_REQUEST_PACKAGE_USAGE_STATS);
+        }
 
         // 动态申请写入权限
         if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
@@ -71,14 +72,29 @@ public class MainActivity extends Activity {
         unbindService(connection);
     }
 
-
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+
+        // 申请查看当前允许app包名权限
+        if (requestCode == MY_PERMISSIONS_REQUEST_PACKAGE_USAGE_STATS) {
+            if (!hasPermission()) {
+                //若用户未开启权限，则引导用户开启“Apps with usage access”权限
+                startActivityForResult(
+                        new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS),
+                        MY_PERMISSIONS_REQUEST_PACKAGE_USAGE_STATS);
+            }
+        }
+
+        // 申请截屏权限
         if (requestCode == RECORD_REQUEST_CODE && resultCode == RESULT_OK) {
+
+            Log.d(TAG,"申请录制屏幕权限成功，开始调用截图函数");
+            // 一旦申请权限成功，立马调用服务的截屏方法
             mediaProjection = projectionManager.getMediaProjection(resultCode, data);
             recordService.setMediaProject(mediaProjection);
             recordService.startRecord();
+            onBackPressed();
         }
     }
 
@@ -108,4 +124,24 @@ public class MainActivity extends Activity {
         }
     };
 
+    private boolean hasPermission() {
+        AppOpsManager appOps = (AppOpsManager)
+                getSystemService(Context.APP_OPS_SERVICE);
+        int mode = 0;
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.KITKAT) {
+            mode = appOps.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS,
+                    android.os.Process.myUid(), getPackageName());
+        }
+        return mode == AppOpsManager.MODE_ALLOWED;
+    }
+
+    @Override
+    protected void onResume() {
+
+        Log.d(TAG,"申请录制屏幕权限");
+        // 申请录制屏幕权限
+        Intent captureIntent = projectionManager.createScreenCaptureIntent();
+        startActivityForResult(captureIntent,RECORD_REQUEST_CODE);
+        super.onResume();
+    }
 }
