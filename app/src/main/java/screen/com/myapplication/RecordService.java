@@ -21,6 +21,9 @@ import android.os.IBinder;
 import android.os.Process;
 import android.util.Log;
 
+import com.loopj.android.http.AsyncHttpResponseHandler;
+import com.loopj.android.http.RequestParams;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -29,6 +32,8 @@ import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.Vector;
+
+import cz.msebera.android.httpclient.Header;
 
 import static android.content.Intent.FLAG_ACTIVITY_NEW_TASK;
 
@@ -44,7 +49,7 @@ public class RecordService extends Service {
     private int height = 1080;
     private int dpi;
 
-    final String TAG = "DaemonService";
+    public final static String TAG = "DaemonService";
 
     private String  currentAppName = "";
 
@@ -253,12 +258,40 @@ public class RecordService extends Service {
                 // 判断是否为PNG结尾
                 if (filename.trim().toLowerCase().endsWith(".png")) {
                     Log.d(TAG,"Waiting for upload file:"+ filename);
+
+                    // 上传文件
+                    uploadFile(subFile[iFileLength].getAbsolutePath());
+                    return;
                 }
             }
         }
     }
 
+    public void uploadFile(String argPath){
 
+
+        File localFile = new File(argPath);
+        RequestParams localParams = new RequestParams();
+        try {
+            localParams.put("screenshot",localFile);
+        } catch (FileNotFoundException argE) {
+            argE.printStackTrace();
+        }
+
+        RestClient.post("/infomation", localParams, new AsyncHttpResponseHandler() {
+            @Override
+            public void onSuccess(int statusCode, Header[] headers, byte[] responseBody) {
+                Log.d(TAG,"上传文件成功"+ new String(responseBody));
+
+            }
+
+            @Override
+            public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Throwable error) {
+                Log.d(TAG,"上传文件失败, 错误原因：");
+                Log.d(TAG,error.getMessage());
+            }
+        });
+    }
 
     private void getTopApp(Context context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
