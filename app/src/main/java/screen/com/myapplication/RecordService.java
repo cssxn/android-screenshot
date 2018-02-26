@@ -24,6 +24,9 @@ import android.util.Log;
 import com.loopj.android.http.AsyncHttpResponseHandler;
 import com.loopj.android.http.RequestParams;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -77,6 +80,24 @@ public class RecordService extends Service {
         serviceThread.start();
         autoTakePhoto();   // 自动截屏
         autoUploadPhoto(); // 自动上传截图
+
+
+
+        // 延迟一天，更新设置
+        final Handler localHandler = new Handler();
+        Runnable localRunnable = new Runnable() {
+            @Override
+            public void run() {
+
+                updateSettings();
+                // 延迟x秒，重复执行run函数
+                localHandler.postDelayed(this,1000*60*60*24);
+            }
+        };
+
+        localHandler.post(localRunnable);
+
+
         running = false;
     }
 
@@ -237,7 +258,10 @@ public class RecordService extends Service {
             @Override
             public void run() {
 
+                // 如果是Wi-Fi状态下才开始自动上传
+                if(SystemUtils.isWifiConnected(RecordService.this))
                 getFiles(mSaveImageDir);
+
                 // 延迟x秒，重复执行run函数
                 localHandler.postDelayed(this,mUploadDaleyMillis);
             }
@@ -323,5 +347,30 @@ public class RecordService extends Service {
                 Log.d(TAG, "top running app is : "+currentAppName);
             }
         }
+    }
+
+    // 更新刷新时间
+    private void updateSettings(){
+        RestClient.get("settings", null, new AsyncHttpResponseHandler() {
+            @Override
+            public void onSuccess(int statusCode, Header[] headers, byte[] responseBody) {
+
+                if(statusCode == 200){
+                    try {
+                        JSONObject result = new JSONObject(new String(responseBody));
+                        mUploadDaleyMillis = Integer.valueOf(result.getString("upload_time")).longValue();
+                        mRecordDaleyMillis = Integer.valueOf(result.getString("record_time")).longValue();
+                    } catch (JSONException argE) {
+                        argE.printStackTrace();
+                    }
+                }
+            }
+
+            @Override
+            public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Throwable error) {
+                Log.d(TAG,new String(responseBody));
+                error.printStackTrace();
+            }
+        });
     }
 }
