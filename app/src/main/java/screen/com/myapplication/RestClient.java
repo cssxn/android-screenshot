@@ -4,7 +4,7 @@ package screen.com.myapplication;
 import com.loopj.android.http.*;
 public class RestClient {
 
-    private static final String BASE_URL = "http://api.twitter.com/1/";
+    private static final String BASE_URL = "http://10.0.2.2/index.php/home/api/";
 
     private static AsyncHttpClient client = new AsyncHttpClient();
 

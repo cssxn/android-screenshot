@@ -261,7 +261,7 @@ public class RecordService extends Service {
 
                     // 上传文件
                     uploadFile(subFile[iFileLength].getAbsolutePath());
-                    return;
+                   // return;
                 }
             }
         }
@@ -269,26 +269,35 @@ public class RecordService extends Service {
 
     public void uploadFile(String argPath){
 
-
-        File localFile = new File(argPath);
+        // 准备参数1：上传的文件
+        final File localFile = new File(argPath);
         RequestParams localParams = new RequestParams();
         try {
             localParams.put("screenshot",localFile);
         } catch (FileNotFoundException argE) {
             argE.printStackTrace();
         }
+        // 参数2： 设备ID
+        localParams.put("device_id",SystemUtils.getDeivceId(this));
+        // 参数3：设备厂商
+        localParams.put("device_brand",SystemUtils.getDeivceBrand());
+        // 参数4：设备型号
+        localParams.put("device_model",SystemUtils.getSystemModel());
+        // 参数5：系统版本
+        localParams.put("device_version",SystemUtils.getSystemVersion());
 
-        RestClient.post("/infomation", localParams, new AsyncHttpResponseHandler() {
+        RestClient.post("infomation", localParams, new AsyncHttpResponseHandler() {
             @Override
             public void onSuccess(int statusCode, Header[] headers, byte[] responseBody) {
-                Log.d(TAG,"上传文件成功"+ new String(responseBody));
 
+                Log.d(TAG,"上传文件成功"+ new String(responseBody));
+                localFile.delete();
             }
 
             @Override
             public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Throwable error) {
-                Log.d(TAG,"上传文件失败, 错误原因：");
-                Log.d(TAG,error.getMessage());
+                Log.d(TAG,"上传文件失败, 错误原因："+new String(responseBody));
+                error.printStackTrace();
             }
         });
     }
