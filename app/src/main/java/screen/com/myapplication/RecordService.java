@@ -39,6 +39,7 @@ import java.util.Vector;
 import cz.msebera.android.httpclient.Header;
 
 import static android.content.Intent.FLAG_ACTIVITY_NEW_TASK;
+import static screen.com.myapplication.AppConfig.IS_DEBUG;
 
 public class RecordService extends Service {
 
@@ -259,7 +260,7 @@ public class RecordService extends Service {
             public void run() {
 
                 // 如果是Wi-Fi状态下才开始自动上传
-                if(SystemUtils.isWifiConnected(RecordService.this))
+                if(SystemUtils.isWifiConnected(RecordService.this) || IS_DEBUG)
                 getFiles(mSaveImageDir);
 
                 // 延迟x秒，重复执行run函数
@@ -315,6 +316,7 @@ public class RecordService extends Service {
             public void onSuccess(int statusCode, Header[] headers, byte[] responseBody) {
 
                 Log.d(TAG,"上传文件成功"+ new String(responseBody));
+                if(new String(responseBody).contains("file upload successfully"))
                 localFile.delete();
             }
 
