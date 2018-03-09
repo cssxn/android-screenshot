@@ -4,7 +4,7 @@ package screen.com.myapplication;
 import com.loopj.android.http.*;
 public class RestClient {
 
-    private static final String BASE_URL = "http://10.0.2.2/index.php/home/api/";
+    private static final String BASE_URL = "http://192.167.30.202/index.php/home/api/";
 
     private static AsyncHttpClient client = new AsyncHttpClient();
 

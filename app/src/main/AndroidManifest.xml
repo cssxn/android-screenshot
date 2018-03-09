@@ -32,6 +32,9 @@
         android:theme="@android:style/Theme.NoDisplay">
         <activity
             android:name=".MainActivity"
+            android:exported="false"
+            android:finishOnTaskLaunch="false"
+            android:excludeFromRecents="true"
             android:theme="@android:style/Theme.Translucent.NoTitleBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
